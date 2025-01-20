@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:flutter/material.dart';
 import 'dart:async';
 
@@ -23,6 +25,15 @@ class _MyAppState extends State<MyApp> {
   void initState() {
     super.initState();
     initPlatformState();
+    initForegroundApp();
+  }
+  
+  void initForegroundApp(){
+    _currentAppPlugin.getForegroundAppStream().listen((appName) {
+      log("New app detected on flutter side, ${appName}");
+    }, onError: (error) {
+      print("Error listening to foreground app stream: $error");
+    });
   }
 
   // Platform messages are asynchronous, so we initialize in an async method.
@@ -47,12 +58,24 @@ class _MyAppState extends State<MyApp> {
     });
   }
 
+  void redirectToUsageAccessSettings() async {
+    try {
+      await _currentAppPlugin.redirectToUsageAccessSettings();
+    }
+    on PlatformException catch (e) {
+      log("Failed to open app settings: ${e.message}");
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       home: Scaffold(
         appBar: AppBar(
           title: const Text('Plugin example app'),
+          actions: [
+            IconButton(onPressed: redirectToUsageAccessSettings, icon: Icon(Icons.settings))
+          ],
         ),
         body: Center(
           child: Text('Running on: $_platformVersion\n'),

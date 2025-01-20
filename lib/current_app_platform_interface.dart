@@ -26,4 +26,13 @@ abstract class CurrentAppPlatform extends PlatformInterface {
   Future<String?> getPlatformVersion() {
     throw UnimplementedError('platformVersion() has not been implemented.');
   }
+
+  Future<void> redirectToUsageAccessSettings() {
+    throw UnimplementedError('redirectToUsageAccessSettings() has not been implemented.');
+  }
+
+  /// Abstract method to get the stream of the foreground app's package name.
+  Stream<String?> getForegroundAppStream() {
+    throw UnimplementedError('getForegroundAppStream() has not been implemented.');
+  }
 }

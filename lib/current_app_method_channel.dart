@@ -9,9 +9,25 @@ class MethodChannelCurrentApp extends CurrentAppPlatform {
   @visibleForTesting
   final methodChannel = const MethodChannel('current_app');
 
+  /// The event channel used to listen to the foreground app updates.
+  @visibleForTesting
+  final eventChannel = const EventChannel('current_app/events');
+
   @override
   Future<String?> getPlatformVersion() async {
     final version = await methodChannel.invokeMethod<String>('getPlatformVersion');
     return version;
   }
+
+  @override
+  Future<void> redirectToUsageAccessSettings() async {
+    await methodChannel.invokeMethod<String>('redirectToUsageAccessSettings');
+  }
+
+  @override
+  Stream<String?> getForegroundAppStream() {
+    return eventChannel.receiveBroadcastStream().map((event) => event as String?);
+  }
+
+
 }
