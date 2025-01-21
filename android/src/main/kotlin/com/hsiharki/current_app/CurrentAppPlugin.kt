@@ -1,23 +1,24 @@
 package com.hsiharki.current_app
 
 import android.content.Context
-import android.content.Intent
-import android.net.Uri
-import android.provider.Settings
+import android.app.usage.UsageStatsManager
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import androidx.annotation.NonNull
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
-import io.flutter.plugin.common.MethodChannel.MethodCallHandler
-import io.flutter.plugin.common.MethodChannel.Result
 
 /** CurrentAppPlugin */
-class CurrentAppPlugin : FlutterPlugin, MethodCallHandler, EventChannel.StreamHandler {
+class CurrentAppPlugin : FlutterPlugin, MethodChannel.MethodCallHandler, EventChannel.StreamHandler {
   private lateinit var methodChannel: MethodChannel
   private lateinit var eventChannel: EventChannel
   private lateinit var context: Context
+  private val handler = Handler(Looper.getMainLooper())
+  private var lastPackageName: String? = null
+  private var isMonitoring = false
 
   override fun onAttachedToEngine(@NonNull flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
     context = flutterPluginBinding.applicationContext
@@ -31,64 +32,71 @@ class CurrentAppPlugin : FlutterPlugin, MethodCallHandler, EventChannel.StreamHa
     eventChannel.setStreamHandler(this)
   }
 
-  override fun onMethodCall(call: MethodCall, result: Result) {
+  override fun onDetachedFromEngine(@NonNull binding: FlutterPlugin.FlutterPluginBinding) {
+    methodChannel.setMethodCallHandler(null)
+    eventChannel.setStreamHandler(null)
+  }
+
+  override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
     when (call.method) {
       "getPlatformVersion" -> result.success("Android ${android.os.Build.VERSION.RELEASE}")
       "redirectToUsageAccessSettings" -> {
         redirectToUsageAccessSettings()
         result.success(null)
       }
-      "startForegroundService" -> {
-        startForegroundAppService()
-        result.success(null)
-      }
-      "stopForegroundService" -> {
-        stopForegroundAppService()
-        result.success(null)
-      }
       else -> result.notImplemented()
     }
   }
 
-  override fun onDetachedFromEngine(@NonNull binding: FlutterPlugin.FlutterPluginBinding) {
-    methodChannel.setMethodCallHandler(null)
-    eventChannel.setStreamHandler(null)
-  }
-
-  // EventChannel.StreamHandler Implementation
   override fun onListen(arguments: Any?, events: EventChannel.EventSink?) {
-    ForegroundAppService.eventSink = events
-    startForegroundAppService()
-    Log.d("CurrentAppPlugin", "EventChannel listening")
+    if (!isMonitoring) {
+      isMonitoring = true
+      startMonitoring(events)
+    }
   }
 
   override fun onCancel(arguments: Any?) {
-    ForegroundAppService.eventSink = null
-    stopForegroundAppService()
-    Log.d("CurrentAppPlugin", "EventChannel canceled")
+    isMonitoring = false
+    stopMonitoring()
   }
 
-  // Start Foreground Service
-  private fun startForegroundAppService() {
-    val intent = Intent(context, ForegroundAppService::class.java)
-    context.startForegroundService(intent)
-    Log.d("CurrentAppPlugin", "ForegroundAppService started")
+  private fun startMonitoring(eventSink: EventChannel.EventSink?) {
+    handler.post(object : Runnable {
+      override fun run() {
+        if (!isMonitoring) return
+
+        val usageStatsManager =
+          context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
+        val currentTime = System.currentTimeMillis()
+
+        val stats = usageStatsManager.queryUsageStats(
+          UsageStatsManager.INTERVAL_DAILY,
+          currentTime - 1000 * 5,
+          currentTime
+        )
+
+        val recentApp = stats?.maxByOrNull { it.lastTimeUsed }
+        if (recentApp != null && recentApp.packageName != lastPackageName) {
+          lastPackageName = recentApp.packageName
+          Log.d("CurrentAppPlugin", "Foreground app detected: $lastPackageName")
+          eventSink?.success(lastPackageName)
+        }
+
+        handler.postDelayed(this, 1000) // Check every second
+      }
+    })
   }
 
-  // Stop Foreground Service
-  private fun stopForegroundAppService() {
-    val intent = Intent(context, ForegroundAppService::class.java)
-    context.stopService(intent)
-    Log.d("CurrentAppPlugin", "ForegroundAppService stopped")
+  private fun stopMonitoring() {
+    handler.removeCallbacksAndMessages(null)
   }
 
-  // Redirect for Usage access permissions
   private fun redirectToUsageAccessSettings() {
     try {
       val appPackageName = context.packageName
-      val intent = Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)
-      intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-      intent.data = Uri.parse("package:$appPackageName") // Dynamic package name
+      val intent = android.content.Intent(android.provider.Settings.ACTION_USAGE_ACCESS_SETTINGS)
+      intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+      intent.data = android.net.Uri.parse("package:$appPackageName")
       context.startActivity(intent)
       Log.d("CurrentAppPlugin", "Redirecting to usage access settings for $appPackageName")
     } catch (e: Exception) {
