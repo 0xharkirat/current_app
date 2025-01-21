@@ -3,11 +3,7 @@
     <!-- Required for querying usage stats -->
     <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" tools:ignore="ProtectedPermissions" />
 
-    <!-- Required for foreground service -->
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
 
-    <!-- Required for foreground service -->
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
 
 
     <application
@@ -42,11 +38,7 @@
             android:name="flutterEmbedding"
             android:value="2" />
 
-        <!-- Foreground Service Declaration -->
-        <service
-            android:name="com.hsiharki.current_app.ForegroundAppService"
-            android:exported="false"
-            android:foregroundServiceType="dataSync" />
+
 
 
     </application>
