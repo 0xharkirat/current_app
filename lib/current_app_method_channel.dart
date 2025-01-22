@@ -29,5 +29,10 @@ class MethodChannelCurrentApp extends CurrentAppPlatform {
     return eventChannel.receiveBroadcastStream().map((event) => event as String?);
   }
 
+  @override
+  Future<void> bringToForeground() {
+    // TODO: implement bringToForeground
+    return methodChannel.invokeMethod('bringToForeground');
+  }
 
 }

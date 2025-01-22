@@ -13,4 +13,8 @@ class CurrentApp {
   Future<void> redirectToUsageAccessSettings() {
     return CurrentAppPlatform.instance.redirectToUsageAccessSettings();
   }
+
+  Future<void> bringToForeground(){
+    return CurrentAppPlatform.instance.bringToForeground();
+  }
 }

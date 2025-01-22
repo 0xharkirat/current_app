@@ -2,6 +2,7 @@ package com.hsiharki.current_app
 
 import android.content.Context
 import android.app.usage.UsageStatsManager
+import android.content.Intent
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
@@ -42,6 +43,10 @@ class CurrentAppPlugin : FlutterPlugin, MethodChannel.MethodCallHandler, EventCh
       "getPlatformVersion" -> result.success("Android ${android.os.Build.VERSION.RELEASE}")
       "redirectToUsageAccessSettings" -> {
         redirectToUsageAccessSettings()
+        result.success(null)
+      }
+      "bringToForeground" -> {
+        bringToForeground()
         result.success(null)
       }
       else -> result.notImplemented()
@@ -102,6 +107,18 @@ class CurrentAppPlugin : FlutterPlugin, MethodChannel.MethodCallHandler, EventCh
     } catch (e: Exception) {
       e.printStackTrace()
       Log.e("CurrentAppPlugin", "Failed to redirect to usage access settings: ${e.message}")
+    }
+  }
+
+  private fun bringToForeground() {
+    try {
+      val intent = context.packageManager.getLaunchIntentForPackage(context.packageName)
+      intent?.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_NEW_TASK)
+      context.startActivity(intent)
+      Log.d("CurrentAppPlugin", "Bringing app to foreground")
+    } catch (e: Exception) {
+      e.printStackTrace()
+      Log.e("CurrentAppPlugin", "Failed to bring app to foreground: ${e.message}")
     }
   }
 }
